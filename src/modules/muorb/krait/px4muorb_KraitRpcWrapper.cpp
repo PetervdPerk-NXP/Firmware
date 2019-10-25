@@ -38,7 +38,7 @@
 #include <rpcmem.h>
 #include <px4muorb.h>
 #include "px4_log.h"
-#include <shmem.h>
+#include <px4_platform_common/shmem.h>
 #include <drivers/drv_hrt.h>
 #include <string.h>
 
