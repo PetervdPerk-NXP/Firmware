@@ -61,6 +61,11 @@
 #  include "s32k1xx_eeeprom.h"
 #endif
 
+#ifdef CONFIG_VIDEO_FB
+#  include <nuttx/video/fb.h>
+#  include "ssd1306.h"
+#endif
+
 #include "board_config.h"
 
 /****************************************************************************
@@ -114,6 +119,15 @@ int s32k1xx_bringup(void)
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "ERROR: Failed to mount procfs at /proc: %d\n", ret);
+	}
+
+#endif
+
+#ifdef CONFIG_VIDEO_FB
+	ret = fb_register(0, 0);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "ERROR: fb_register() failed: %d\n", ret);
 	}
 
 #endif
