@@ -65,6 +65,7 @@ else()
 		spi.c
 		timer_config.cpp
 		userleds.c
+		ssd1306.c
 	)
 
 	target_link_libraries(drivers_board
