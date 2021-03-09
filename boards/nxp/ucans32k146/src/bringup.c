@@ -63,7 +63,6 @@
 
 #ifdef CONFIG_VIDEO_FB
 #  include <nuttx/video/fb.h>
-#  include "ssd1306.h"
 #endif
 
 #include "board_config.h"
