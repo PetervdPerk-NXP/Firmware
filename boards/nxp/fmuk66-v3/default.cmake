@@ -15,25 +15,6 @@ px4_add_board(
 		TEL1:/dev/ttyS4
 		TEL2:/dev/ttyS1
 	DRIVERS
-		adc/board_adc
-		barometer # all available barometer drivers
-		barometer/mpl3115a2
-		batt_smbus
-		camera_capture
-		camera_trigger
-		differential_pressure # all available differential pressure drivers
-		distance_sensor # all available distance sensor drivers
-		distance_sensor/srf05 # Specific driver
-		gps
-		#heater
-		#imu # all available imu drivers
-		imu/fxas21002c
-		imu/fxos8701cq
-		irlock
-		lights/blinkm
-		lights/rgbled
-		lights/rgbled_ncp5623c
-		lights/rgbled_pwm
 		magnetometer # all available magnetometer drivers
 		#optical_flow # all available optical flow drivers
 		optical_flow/px4flow
