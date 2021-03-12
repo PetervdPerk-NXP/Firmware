@@ -9,7 +9,6 @@ px4_add_board(
 	CONSTRAINED_MEMORY
 	ROMFSROOT px4fmu_common
 	TESTING
-	UAVCAN_INTERFACES 2
 	SERIAL_PORTS
 		GPS1:/dev/ttyS3
 		TEL1:/dev/ttyS4
