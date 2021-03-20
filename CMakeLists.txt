@@ -146,6 +146,7 @@ message(STATUS "PX4 config: ${PX4_CONFIG}")
 message(STATUS "PX4 platform: ${PX4_PLATFORM}")
 
 include(kconfig)
+include(gui)
 
 if(${PX4_PLATFORM} STREQUAL "posix")
 	if(ENABLE_LOCKSTEP_SCHEDULER)
