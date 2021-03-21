@@ -44,32 +44,86 @@ import sys
 import os
 from pprint import pprint as pp
 
-from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy, QTreeView, QGroupBox, QTextEdit
+from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy, QTreeView, QGroupBox, QTextEdit, QComboBox, QItemDelegate
 from PySide2.QtGui import QStandardItem, QStandardItemModel, QPixmap, QFont
-from PySide2.QtCore import QFile, Qt, QProcessEnvironment, QProcess, QSortFilterProxyModel, QAbstractProxyModel
+from PySide2.QtCore import QObject, Signal, QFile, Qt, QProcessEnvironment, QProcess, QSortFilterProxyModel, QAbstractProxyModel
 from PySide2.QtUiTools import QUiLoader
 
 import kconfiglib
 from kconfiglib import Kconfig, Symbol, Choice, MENU, COMMENT, MenuNode, \
                        BOOL, TRISTATE, STRING, INT, HEX, \
-                       AND, OR
+                       AND, OR, expr_value
+
+class KconfigItemDelegate(QItemDelegate):
+    """
+    Custom QItemDelegate that create a QComboBox editor Kconfig choice options
+    """
+    def __init__(self, parent):
+        QItemDelegate.__init__(self, parent)
+
+    def createEditor(self, parent, option, index):
+        nodeItem = index.data(Qt.UserRole)
+        if isinstance(nodeItem, Symbol):
+            return QItemDelegate.createEditor(self, parent, option, index)
+        elif isinstance(nodeItem, Choice):
+            combo = QComboBox(parent)
+            selectIndex = 0
+            for choiceItem in nodeItem.syms:
+                for node in choiceItem.nodes:
+                    if node.prompt:
+                        combo.addItem(node.prompt[0])
+                        if nodeItem.selection == node:
+                            selectIndex = count()-1
+            combo.setCurrentIndex(selectIndex)
+            return combo
+        return None
+
+    def setEditorData(self, editor, index):
+        nodeItem = index.data(Qt.UserRole)
+        if isinstance(nodeItem, Symbol):
+            return QItemDelegate.setEditorData(self, editor, index)
+        elif isinstance(nodeItem, Choice):
+            text = index.data()
+            index = editor.findText(text)
+            editor.setCurrentIndex(index)
+
+    def setModelData(self, editor, model, index):
+        nodeItem = index.data(Qt.UserRole)
+        if isinstance(nodeItem, Symbol):
+            return QItemDelegate.setModelData(self, editor, model, index)
+        elif isinstance(nodeItem, Choice):
+            model.setData(index, editor.itemText(editor.currentIndex()))
+
+    def updateEditorGeometry(self, editor, option, index):
+        nodeItem = index.data(Qt.UserRole)
+        if isinstance(nodeItem, Symbol):
+            return QItemDelegate.updateEditorGeometry(self, editor, option, index)
+        elif isinstance(nodeItem, Choice):
+            editor.setGeometry(option.rect)
 
 class KconfigFilterProxyModel(QSortFilterProxyModel):
     """
     Custom QSortFilterProxyModel that hides invisible kconfig symbols
     using Kconfiblib
     """
+    configChanged = Signal(QStandardItem)
+
     def __init__(self, parent=None):
         super(KconfigFilterProxyModel, self).__init__(parent)
 
     def filterAcceptsRow(self, source_row, source_parent):
-        symbol = self.sourceModel().index(source_row, 0, source_parent).data(Qt.UserRole)
-        if isinstance(symbol, Symbol):
-            if(symbol.visibility == 0):
+        nodeItem = self.sourceModel().index(source_row, 0, source_parent).data(Qt.UserRole)
+        if isinstance(nodeItem, Symbol) or isinstance(nodeItem, Choice):
+            if(nodeItem.visibility == 0):
                 return False
         return True
 
 class Kconfig():
+    """
+    Kconfig class to provide a Kconfig QStandardItemModel for QTreeView
+    """
+    items = []
+
     def __init__(self):
         env = QProcessEnvironment.systemEnvironment()
         self.defconfig_path = env.value('GUI_DEFCONFIG')
@@ -79,83 +133,111 @@ class Kconfig():
         self.model = QStandardItemModel()
         self.model.setRowCount(0)
         self.getItems(self.kconf.top_node.list, self.model.invisibleRootItem())
+        self.updateItems()
 
         self.kconfigProxyModel = KconfigFilterProxyModel()
         self.kconfigProxyModel.setSourceModel(self.model)
 
         self.model.itemChanged.connect(self.configChanged)
+        self.kconfigProxyModel.configChanged.connect(self.configChanged)
 
     def saveDefConfig(self):
         print(self.kconf.write_min_config(self.defconfig_path))
 
     def configChanged(self, field: QStandardItem):
-        symbol = field.data(Qt.UserRole);
-        if isinstance(symbol, Symbol):
+        nodeItem = field.data(Qt.UserRole);
+        if isinstance(nodeItem, Symbol):
             if(field.isCheckable()):
                 if(field.checkState() == Qt.Checked):
-                    symbol.set_value(2) # Why 2 though??
+                    nodeItem.set_value(2) # Why 2 though??
                 else:
-                    symbol.set_value(0) # Why 2 though??
+                    nodeItem.set_value(0)
             elif(field.isEditable()):
-                if(symbol.set_value(field.text()) == False): # failed set back to orig_type
-                    field.setText(symbol.str_value)
+                if(nodeItem.set_value(field.text()) == False): # failed set back to orig_type
+                    field.setText(nodeItem.str_value)
+        if isinstance(nodeItem, Choice):
+            for choiceItem in nodeItem.syms:
+                for node in choiceItem.nodes:
+                    if node.prompt:
+                        if field.text() == node.prompt[0]:
+                            choiceItem.set_value(2) # Set this symbol to Y, kconfiblib does the reset
+                            break
 
+        self.updateItems()
         self.kconfigProxyModel.invalidateFilter()
 
     def getModel(self):
         return self.kconfigProxyModel
 
-    def indent_print(self, s):
-        indent = 0
-        print(indent*" " + s)
+    def updateItems(self):
+        for qItem in self.items:
+            nodeItem = qItem.data(Qt.UserRole);
+            if isinstance(nodeItem, Symbol):
+                if(qItem.isCheckable()):
+                    if(nodeItem.user_value is None and nodeItem.user_value == 2):
+                        qItem.setCheckState(Qt.Checked)
+                    elif(nodeItem.str_value == 'y'):
+                        qItem.setCheckState(Qt.Checked) # Set default y when applicable
+                    else:
+                        qItem.setCheckState(Qt.Unchecked)
+                else:
+                    index = self.model.indexFromItem(qItem).siblingAtColumn(1)
+                    qValueItem = self.model.itemFromIndex(index)
+                    qValueItem.setText(nodeItem.str_value)
+            elif isinstance(nodeItem, Choice):
+                index = self.model.indexFromItem(qItem).siblingAtColumn(1)
+                qValueItem = self.model.itemFromIndex(index)
+                for choiceItem in nodeItem.syms:
+                    for node in choiceItem.nodes:
+                        if node.prompt:
+                            if nodeItem.selection == node.item:
+                                qValueItem.setText(node.prompt[0])
 
     def getItems(self, node, parent):
         while node:
-            nodeItem = None
+            qnodeItem = None
             if isinstance(node.item, Symbol):
-                nodeItem = QStandardItem(node.prompt[0])
-                nodeItem.setEditable(False)
-                nodeValue = QStandardItem()
+                qnodeItem = QStandardItem(node.prompt[0])
+                qnodeItem.setEditable(False)
+                qnodeValue = QStandardItem()
 
                 if(node.item.orig_type == BOOL):
-                    nodeItem.setCheckable(True)
-                    if(node.item.user_value is not None):
-                        nodeItem.setCheckState(Qt.Checked)
+                    qnodeItem.setCheckable(True)
                 elif(node.item.orig_type == TRISTATE):
-                    nodeItem.setUserTristate(True)
-                    if(node.item.user_value is not None): # FIXME tristate
-                        nodeItem.setCheckState(Qt.Checked)
+                    qnodeItem.setUserTristate(True) #FIXME implement tristate
                 else:
                     # Int string hex
-                    nodeValue.setText(node.item.str_value)
-                    nodeValue.setData(node.item, Qt.UserRole)
+                    qnodeValue.setData(node.item, Qt.UserRole)
 
-                parent.appendRow([nodeItem, nodeValue])
-                nodeItem.setData(node.item.name, Qt.ToolTipRole)
-                nodeItem.setData(node.item, Qt.UserRole)
+                parent.appendRow([qnodeItem, qnodeValue])
+                qnodeItem.setData(node.item.name, Qt.ToolTipRole)
+                qnodeItem.setData(node.item, Qt.UserRole)
+                self.items.append(qnodeItem)
 
             elif isinstance(node.item, Choice):
-                #FIXME choice
-                self.indent_print("FIXME choice")
+                qchoiceItem = QStandardItem(node.prompt[0])
+                qchoiceItem.setEditable(False)
+                qchoiceItemOption = QStandardItem()
+                qchoiceItemOption.setData(node.item, Qt.UserRole)
+
+                parent.appendRow([qchoiceItem, qchoiceItemOption])
+                qchoiceItem.setData(node.item.name, Qt.ToolTipRole)
+                qchoiceItem.setData(node.item, Qt.UserRole)
+                self.items.append(qchoiceItem)
 
             elif node.item == MENU:
-                nodeItem = QStandardItem(node.prompt[0])
-                nodeItem.setEditable(False)
-                parent.appendRow([nodeItem, QStandardItem()])
-                nodeItem.setData(node.item, Qt.UserRole) # Menu are always visible
-                self.indent_print('menu "{}"'.format(node.prompt[0]))
+                qnodeItem = QStandardItem(node.prompt[0])
+                qnodeItem.setEditable(False)
+                parent.appendRow([qnodeItem, QStandardItem()])
+                qnodeItem.setData(node.item, Qt.UserRole) # Menu are always visible
 
             if node.list:
-                if(nodeItem is not None):
-                    self.getItems(node.list, nodeItem)
-                else:
-                    print("FIXME unparsed Kconfig")
+                if(qnodeItem is not None):
+                    self.getItems(node.list, qnodeItem)
 
             node = node.next
 
 class PX4DevGUI(QWidget):
-
-    FROM, SUBJECT, DATE = range(3)
     taskRunning = False
 
     def __init__(self):
@@ -198,6 +280,7 @@ class PX4DevGUI(QWidget):
 
         self.kconfig = Kconfig()
         self.dataView.setModel(self.kconfig.getModel())
+        self.dataView.setItemDelegateForColumn(1, KconfigItemDelegate(self.dataView))
         self.dataView.expanded.connect(lambda: self.dataView.resizeColumnToContents(0))
         self.dataView.resizeColumnToContents(0);
 
@@ -241,53 +324,40 @@ class PX4DevGUI(QWidget):
         actionLayout.addWidget(actionFlash)
         actionLayout.addWidget(px4Logo)
 
+    def __del__(self):
+        if(self.taskRunning == True):
+            self.myProcess.terminate()
+            self.myProcess.waitForFinished()
+
     def taskFinished(self):
-        print("Task done") # Make a loading circle and process return status??
+        print("Task done") #TODO Make a loading circle and process return status??
         self.taskRunning = False;
 
-    def configureClick(self):
-        print("configureClick")
-        self.kconfig.saveDefConfig()
-
-        if(self.taskRunning == False):
-            self.taskRunning = True;
-
-            program = "make"
-            arguments = [self.config, "clean"]
-
-            self.myProcess = QProcess()
-            self.myProcess.start(program, arguments)
-            self.myProcess.setProcessEnvironment(QProcessEnvironment.systemEnvironment())
-            self.myProcess.readyReadStandardOutput.connect(self.write_terminal_output)
-            self.myProcess.finished.connect(self.taskFinished)
-
-    def compileClick(self):
-        print("compileClick")
+    def runMake(self, suffix = None):
         if(self.taskRunning == False):
             self.taskRunning = True;
 
             program = "make"
             arguments = [self.config]
 
-            self.myProcess = QProcess()
+            if suffix is not None:
+                arguments.append(suffix)
+
+            self.myProcess = QProcess(self)
             self.myProcess.start(program, arguments)
             self.myProcess.setProcessEnvironment(QProcessEnvironment.systemEnvironment())
             self.myProcess.readyReadStandardOutput.connect(self.write_terminal_output)
             self.myProcess.finished.connect(self.taskFinished)
+
+    def configureClick(self):
+        self.kconfig.saveDefConfig()
+        self.runMake("clean")
+
+    def compileClick(self):
+        self.runMake()
 
     def flashClick(self):
-        print("flashClick")
-        if(self.taskRunning == False):
-            self.taskRunning = True;
-
-            program = "make"
-            arguments = [self.config, "upload"]
-
-            self.myProcess = QProcess()
-            self.myProcess.start(program, arguments)
-            self.myProcess.setProcessEnvironment(QProcessEnvironment.systemEnvironment())
-            self.myProcess.readyReadStandardOutput.connect(self.write_terminal_output)
-            self.myProcess.finished.connect(self.taskFinished)
+        self.runMake("upload")
 
     def write_terminal_output(self):
         self.terminalOutput.append(self.myProcess.readAllStandardOutput().data().decode())
