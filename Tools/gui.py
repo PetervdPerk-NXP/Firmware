@@ -41,22 +41,21 @@ PX4 pyside Qt GUI confgure to Kconfig and compile and flash boards
 """
 
 import sys
-import os
 from pprint import pprint as pp
 
-from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy, QTreeView, QGroupBox, QTextEdit, QComboBox, QItemDelegate
+from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy, QTreeView, QGroupBox, QTextEdit, QComboBox, QItemDelegate, QMenu, QMessageBox
 from PySide2.QtGui import QStandardItem, QStandardItemModel, QPixmap, QFont
 from PySide2.QtCore import QObject, Signal, QFile, Qt, QProcessEnvironment, QProcess, QSortFilterProxyModel, QAbstractProxyModel
 from PySide2.QtUiTools import QUiLoader
 
-import kconfiglib
-from kconfiglib import Kconfig, Symbol, Choice, MENU, COMMENT, MenuNode, \
+from kconfiglib import Kconfig, standard_kconfig, Symbol, Choice, MENU, COMMENT, MenuNode, \
                        BOOL, TRISTATE, STRING, INT, HEX, \
                        AND, OR, expr_value
 
 class KconfigItemDelegate(QItemDelegate):
     """
-    Custom QItemDelegate that create a QComboBox editor Kconfig choice options
+    Custom QItemDelegate that creates a QComboBox editor
+    when a Kconfig choice option is selected
     """
     def __init__(self, parent):
         QItemDelegate.__init__(self, parent)
@@ -73,7 +72,7 @@ class KconfigItemDelegate(QItemDelegate):
                     if node.prompt:
                         combo.addItem(node.prompt[0])
                         if nodeItem.selection == node:
-                            selectIndex = count()-1
+                            selectIndex = combo.count()-1
             combo.setCurrentIndex(selectIndex)
             return combo
         return None
@@ -106,7 +105,6 @@ class KconfigFilterProxyModel(QSortFilterProxyModel):
     Custom QSortFilterProxyModel that hides invisible kconfig symbols
     using Kconfiblib
     """
-    configChanged = Signal(QStandardItem)
 
     def __init__(self, parent=None):
         super(KconfigFilterProxyModel, self).__init__(parent)
@@ -118,16 +116,17 @@ class KconfigFilterProxyModel(QSortFilterProxyModel):
                 return False
         return True
 
-class Kconfig():
+class Kconfig(QObject):
     """
     Kconfig class to provide a Kconfig QStandardItemModel for QTreeView
     """
     items = []
 
     def __init__(self):
+        super(Kconfig, self).__init__()
         env = QProcessEnvironment.systemEnvironment()
         self.defconfig_path = env.value('GUI_DEFCONFIG')
-        self.kconf = kconfiglib.standard_kconfig(env.value('GUI_KCONFIG'))
+        self.kconf = standard_kconfig(env.value('GUI_KCONFIG'))
         self.kconf.load_config(self.defconfig_path)
 
         self.model = QStandardItemModel()
@@ -139,7 +138,6 @@ class Kconfig():
         self.kconfigProxyModel.setSourceModel(self.model)
 
         self.model.itemChanged.connect(self.configChanged)
-        self.kconfigProxyModel.configChanged.connect(self.configChanged)
 
     def saveDefConfig(self):
         print(self.kconf.write_min_config(self.defconfig_path))
@@ -160,7 +158,7 @@ class Kconfig():
                 for node in choiceItem.nodes:
                     if node.prompt:
                         if field.text() == node.prompt[0]:
-                            choiceItem.set_value(2) # Set this symbol to Y, kconfiblib does the reset
+                            choiceItem.set_value(2) # Set this symbol to Y, kconfiglib does the rest
                             break
 
         self.updateItems()
@@ -237,6 +235,35 @@ class Kconfig():
 
             node = node.next
 
+    # Function to add right click menu to treeview item
+    def openMenu(self, position):
+        modelIndex = self.kconfigProxyModel.mapToSource(self.sender().indexAt(position))
+        item = self.model.itemFromIndex(modelIndex)
+        nodeItem = item.data(Qt.UserRole)
+        if isinstance(nodeItem, Symbol) or isinstance(nodeItem, Choice):
+            right_click_menu = QMenu()
+            act_default = right_click_menu.addAction(self.tr("Set to default"))
+            act_default.triggered.connect(lambda: self.setDefault(nodeItem))
+            act_help = right_click_menu.addAction(self.tr("Help"))
+            act_help.triggered.connect(lambda: self.helpDialog(nodeItem))
+            right_click_menu.exec_(self.sender().viewport().mapToGlobal(position))
+
+    def setDefault(self, nodeItem):
+        nodeItem.unset_value()
+        self.updateItems()
+        self.kconfigProxyModel.invalidateFilter()
+
+    def helpDialog(self, nodeItem):
+        s = ''
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        for node in nodeItem.nodes:
+            if node.help is not None:
+                    s += node.help
+        msg.setText(s)
+        msg.exec_()
+
+
 class PX4DevGUI(QWidget):
     taskRunning = False
 
@@ -280,6 +307,8 @@ class PX4DevGUI(QWidget):
 
         self.kconfig = Kconfig()
         self.dataView.setModel(self.kconfig.getModel())
+        self.dataView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.dataView.customContextMenuRequested.connect(self.kconfig.openMenu)
         self.dataView.setItemDelegateForColumn(1, KconfigItemDelegate(self.dataView))
         self.dataView.expanded.connect(lambda: self.dataView.resizeColumnToContents(0))
         self.dataView.resizeColumnToContents(0);
