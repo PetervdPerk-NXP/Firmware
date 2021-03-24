@@ -69,7 +69,7 @@ class KconfigItemDelegate(QItemDelegate):
             selectIndex = 0
             for choiceItem in nodeItem.syms:
                 for node in choiceItem.nodes:
-                    if node.prompt:
+                    if node.item.visibility != 0 and node.prompt:
                         combo.addItem(node.prompt[0])
                         if nodeItem.selection == node:
                             selectIndex = combo.count()-1
@@ -148,6 +148,8 @@ class Kconfig(QObject):
             if(field.isCheckable()):
                 if(field.checkState() == Qt.Checked):
                     nodeItem.set_value(2) # Why 2 though??
+                elif(field.checkState() == Qt.PartiallyChecked):
+                    nodeItem.set_value(1)
                 else:
                     nodeItem.set_value(0)
             elif(field.isEditable()):
@@ -172,12 +174,20 @@ class Kconfig(QObject):
             nodeItem = qItem.data(Qt.UserRole);
             if isinstance(nodeItem, Symbol):
                 if(qItem.isCheckable()):
-                    if(nodeItem.user_value is None and nodeItem.user_value == 2):
-                        qItem.setCheckState(Qt.Checked)
-                    elif(nodeItem.str_value == 'y'):
-                        qItem.setCheckState(Qt.Checked) # Set default y when applicable
-                    else:
-                        qItem.setCheckState(Qt.Unchecked)
+                    if(nodeItem.user_value is not None):
+                        if(nodeItem.user_value == 2):
+                            qItem.setCheckState(Qt.Checked)
+                        elif(nodeItem.user_value == 1):
+                            qItem.setCheckState(Qt.PartiallyChecked)
+                        else:
+                            qItem.setCheckState(Qt.Unchecked)
+                    else: # Set default value
+                        if(nodeItem.str_value == 'y'):
+                            qItem.setCheckState(Qt.Checked)
+                        elif(nodeItem.str_value == 'm'):
+                            qItem.setCheckState(Qt.PartiallyChecked)
+                        else:
+                            qItem.setCheckState(Qt.Unchecked)
                 else:
                     index = self.model.indexFromItem(qItem).siblingAtColumn(1)
                     qValueItem = self.model.itemFromIndex(index)
@@ -194,25 +204,12 @@ class Kconfig(QObject):
     def getItems(self, node, parent):
         while node:
             qnodeItem = None
-            if isinstance(node.item, Symbol):
+            if node.item == MENU:
                 qnodeItem = QStandardItem(node.prompt[0])
                 qnodeItem.setEditable(False)
-                qnodeValue = QStandardItem()
-
-                if(node.item.orig_type == BOOL):
-                    qnodeItem.setCheckable(True)
-                elif(node.item.orig_type == TRISTATE):
-                    qnodeItem.setUserTristate(True) #FIXME implement tristate
-                else:
-                    # Int string hex
-                    qnodeValue.setData(node.item, Qt.UserRole)
-
-                parent.appendRow([qnodeItem, qnodeValue])
-                qnodeItem.setData(node.item.name, Qt.ToolTipRole)
-                qnodeItem.setData(node.item, Qt.UserRole)
-                self.items.append(qnodeItem)
-
-            elif isinstance(node.item, Choice):
+                parent.appendRow([qnodeItem, QStandardItem()])
+                qnodeItem.setData(node.item, Qt.UserRole) # Menu are always visible
+            elif isinstance(node.item, Choice) and node.list is not None:
                 qchoiceItem = QStandardItem(node.prompt[0])
                 qchoiceItem.setEditable(False)
                 qchoiceItemOption = QStandardItem()
@@ -222,12 +219,34 @@ class Kconfig(QObject):
                 qchoiceItem.setData(node.item.name, Qt.ToolTipRole)
                 qchoiceItem.setData(node.item, Qt.UserRole)
                 self.items.append(qchoiceItem)
+            elif hasattr(node.item, 'orig_type') and node.item.orig_type in (BOOL,TRISTATE):
+                if node.prompt is not None:
+                    qnodeItem = QStandardItem(node.prompt[0])
+                    qnodeItem.setEditable(False)
+                    qnodeItem.setCheckable(True)
 
-            elif node.item == MENU:
-                qnodeItem = QStandardItem(node.prompt[0])
-                qnodeItem.setEditable(False)
-                parent.appendRow([qnodeItem, QStandardItem()])
-                qnodeItem.setData(node.item, Qt.UserRole) # Menu are always visible
+                    if(node.item.orig_type == TRISTATE):
+                        qnodeItem.setCheckable(True)
+                        qnodeItem.setTristate(True)
+                        qnodeItem.setUserTristate(True)
+
+                    parent.appendRow([qnodeItem, QStandardItem()])
+                    qnodeItem.setData(node.item.name, Qt.ToolTipRole)
+                    qnodeItem.setData(node.item, Qt.UserRole)
+                    self.items.append(qnodeItem)
+            elif isinstance(node.item, Symbol):
+                if node.prompt is not None:
+                    qnodeItem = QStandardItem(node.prompt[0])
+                    qnodeItem.setEditable(False)
+
+                    # Int string hex
+                    qnodeValue = QStandardItem()
+                    qnodeValue.setData(node.item, Qt.UserRole)
+
+                    parent.appendRow([qnodeItem, qnodeValue])
+                    qnodeItem.setData(node.item.name, Qt.ToolTipRole)
+                    qnodeItem.setData(node.item, Qt.UserRole)
+                    self.items.append(qnodeItem)
 
             if node.list:
                 if(qnodeItem is not None):
