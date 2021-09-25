@@ -65,6 +65,12 @@ if(EXISTS ${BOARD_DEFCONFIG})
 
                 # Set the variable
                 set(${Name} ${Value} CACHE INTERNAL "BOARD DEFCONFIG: ${Name}" FORCE)
+
+                if("${Value}" MATCHES "^\"(.*)\"$") # Is a string
+                    add_compile_definitions(${NameAndValue})
+                elseif("${Value}" MATCHES "^y$") # Is y and evaluate to 1
+                    add_compile_definitions(${Name}=1)
+                endif()
             endif()
         endif()
 

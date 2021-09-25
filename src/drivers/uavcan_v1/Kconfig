@@ -20,6 +20,53 @@ if DRIVERS_UAVCAN_V1
 
     endchoice
 
+    menu "Publisher support"
+
+        config UAVCAN_V1_GNSS_PUBLISHER
+            bool "GNSS Publisher"
+            default n
+
+        config UAVCAN_V1_ESC_CONTROLLER
+            bool "ESC Controller"
+            default n
+
+        config UAVCAN_V1_READINESS_PUBLISHER
+            bool "Readiness Publisher"
+            default n
+
+        config UAVCAN_V1_UORB_ACTUATOR_OUTPUTS_PUBLISHER
+            bool "uORB actuator_outputs publisher"
+            default n
+
+        config UAVCAN_V1_UORB_SENSOR_GPS_PUBLISHER
+            bool "uORB sensor_gps publisher"
+            default n
+
+    endmenu
+
+    menu "Subscriber support"
+
+        config UAVCAN_V1_ESC_SUBSCRIBER
+            bool "ESC Subscriber"
+            default n
+
+        config UAVCAN_V1_GNSS_SUBSCRIBER_0
+            bool "GNSS Subscriber 0 "
+            default n
+
+        config UAVCAN_V1_GNSS_SUBSCRIBER_1
+            bool "GNSS Subscriber 1"
+            default n
+
+        config UAVCAN_V1_BMS_SUBSCRIBER
+            bool "BMS Subscriber"
+            default n
+
+        config UAVCAN_V1_UORB_SENSOR_GPS_SUBSCRIBER
+            bool "uORB sensor_gps Subscriber"
+            default n
+    endmenu
+
     config UAVCAN_V1_GETINFO_RESPONDER
         bool "GetInfo1.0 responder"
         default n
@@ -28,7 +75,4 @@ if DRIVERS_UAVCAN_V1
         bool "ExecuteCommand1.0 responder"
         default n
 
-    config UAVCAN_V1_GNSS_PUBLISHER
-        bool "GNSS Publisher"
-        default n
 endif #DRIVERS_UAVCAN_V1

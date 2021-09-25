@@ -42,6 +42,33 @@
 
 #pragma once
 
+#ifndef CONFIG_UAVCAN_V1_GNSS_PUBLISHER
+#define CONFIG_UAVCAN_V1_GNSS_PUBLISHER 0
+#endif
+
+#ifndef CONFIG_UAVCAN_V1_ESC_CONTROLLER
+#define CONFIG_UAVCAN_V1_ESC_CONTROLLER 0
+#endif
+
+#ifndef CONFIG_UAVCAN_V1_READINESS_PUBLISHER
+#define CONFIG_UAVCAN_V1_READINESS_PUBLISHER 0
+#endif
+
+#ifndef CONFIG_UAVCAN_V1_UORB_ACTUATOR_OUTPUTS_PUBLISHER
+#define CONFIG_UAVCAN_V1_UORB_ACTUATOR_OUTPUTS_PUBLISHER 0
+#endif
+
+#ifndef CONFIG_UAVCAN_V1_UORB_SENSOR_GPS_PUBLISHER
+#define CONFIG_UAVCAN_V1_UORB_SENSOR_GPS_PUBLISHER 0
+#endif
+
+/* Preprocessor calculation of publisher count */
+
+#define UAVCAN_PUB_COUNT CONFIG_UAVCAN_V1_GNSS_PUBLISHER + \
+	CONFIG_UAVCAN_V1_ESC_CONTROLLER + \
+	CONFIG_UAVCAN_V1_READINESS_PUBLISHER + \
+	CONFIG_UAVCAN_V1_UORB_ACTUATOR_OUTPUTS_PUBLISHER + \
+	CONFIG_UAVCAN_V1_UORB_SENSOR_GPS_PUBLISHER
 
 #include <px4_platform_common/defines.h>
 #include <drivers/drv_hrt.h>
@@ -79,7 +106,9 @@ private:
 	UavcanParamManager &_param_manager;
 	List<UavcanPublisher *> _dynpublishers;
 
-	const UavcanDynPubBinder _uavcan_pubs[5] {
+
+	const UavcanDynPubBinder _uavcan_pubs[UAVCAN_PUB_COUNT] {
+#if CONFIG_UAVCAN_V1_GNSS_PUBLISHER
 		{
 			[](CanardInstance & ins, UavcanParamManager & pmgr) -> UavcanPublisher *
 			{
@@ -88,6 +117,8 @@ private:
 			"gps",
 			0
 		},
+#endif
+#if CONFIG_UAVCAN_V1_ESC_CONTROLLER
 		{
 			[](CanardInstance & ins, UavcanParamManager & pmgr) -> UavcanPublisher *
 			{
@@ -96,6 +127,8 @@ private:
 			"esc",
 			0
 		},
+#endif
+#if CONFIG_UAVCAN_V1_READINESS_PUBLISHER
 		{
 			[](CanardInstance & ins, UavcanParamManager & pmgr) -> UavcanPublisher *
 			{
@@ -104,6 +137,8 @@ private:
 			"readiness",
 			0
 		},
+#endif
+#if CONFIG_UAVCAN_V1_UORB_ACTUATOR_OUTPUTS_PUBLISHER
 		{
 			[](CanardInstance & ins, UavcanParamManager & pmgr) -> UavcanPublisher *
 			{
@@ -112,7 +147,8 @@ private:
 			"uorb.actuator_outputs",
 			0
 		},
-
+#endif
+#if CONFIG_UAVCAN_V1_UORB_SENSOR_GPS_PUBLISHER
 		{
 			[](CanardInstance & ins, UavcanParamManager & pmgr) -> UavcanPublisher *
 			{
@@ -121,5 +157,6 @@ private:
 			"uorb.sensor_gps",
 			0
 		},
+#endif
 	};
 };
