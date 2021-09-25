@@ -72,6 +72,12 @@ if(EXISTS ${BOARD_DEFCONFIG})
                     add_compile_definitions(${Name}=1)
                 endif()
             endif()
+        else()
+            # Check if we need to clear cache
+            string(REGEX MATCH "^# (CONFIG[^=]+) is not set" NotSet ${NameAndValue})
+            if(NotSet)
+                unset(${CMAKE_MATCH_1} CACHE)
+            endif()
         endif()
 
         # Find variable name

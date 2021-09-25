@@ -20,6 +20,13 @@ if DRIVERS_UAVCAN_V1
 
     endchoice
 
+    config UAVCAN_V1_NODE_MANAGER
+        bool "Node manager"
+        default y
+        depends on UAVCAN_V1_FMU
+        help
+            Implement UAVCAN v1 PNP server functionality and manages discovered nodes
+
     menu "Publisher support"
 
         config UAVCAN_V1_GNSS_PUBLISHER

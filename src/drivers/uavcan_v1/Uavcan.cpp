@@ -80,7 +80,9 @@ UavcanNode::UavcanNode(CanardInterface *interface, uint32_t node_id) :
 		_canard_instance.mtu_bytes = CANARD_MTU_CAN_CLASSIC;
 	}
 
+#ifdef CONFIG_UAVCAN_V1_NODE_MANAGER
 	_node_manager.subscribe();
+#endif
 
 	_pub_manager.updateParams();
 
@@ -201,7 +203,9 @@ void UavcanNode::Run()
 	// Check all publishers
 	_pub_manager.update();
 
+#ifdef CONFIG_UAVCAN_V1_NODE_MANAGER
 	_node_manager.update();
+#endif
 
 	transmit();
 

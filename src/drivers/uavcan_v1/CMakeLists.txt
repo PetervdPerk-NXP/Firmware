@@ -64,6 +64,13 @@ if(${PX4_PLATFORM} MATCHES "nuttx")
 	endif()
 endif()
 
+if(CONFIG_UAVCAN_V1_NODE_MANAGER)
+    list(APPEND SRCS
+		NodeManager.hpp
+		NodeManager.cpp
+    )
+endif()
+
 px4_add_module(
 	MODULE drivers__uavcan_v1
 	MAIN uavcan_v1
@@ -82,8 +89,6 @@ px4_add_module(
 		SubscriptionManager.hpp
 		ParamManager.hpp
 		ParamManager.cpp
-		NodeManager.hpp
-		NodeManager.cpp
 		Uavcan.cpp
 		Uavcan.hpp
 		Publishers/uORB/uorb_publisher.cpp
