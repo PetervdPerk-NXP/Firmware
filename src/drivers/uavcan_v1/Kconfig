@@ -27,6 +27,14 @@ if DRIVERS_UAVCAN_V1
         help
             Implement UAVCAN v1 PNP server functionality and manages discovered nodes
 
+    config UAVCAN_V1_NODE_CLIENT
+        bool "Node client"
+        default y
+        depends on UAVCAN_V1_CLIENT
+        help
+            Implement UAVCAN v1 PNP client functionality
+
+
     menu "Publisher support"
 
         config UAVCAN_V1_GNSS_PUBLISHER

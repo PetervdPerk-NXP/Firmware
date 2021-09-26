@@ -65,6 +65,10 @@
 #include "NodeManager.hpp"
 #endif
 
+#ifdef CONFIG_UAVCAN_V1_NODE_CLIENT
+#include "NodeClient.hpp"
+#endif
+
 #include "PublicationManager.hpp"
 #include "SubscriptionManager.hpp"
 
@@ -183,6 +187,10 @@ private:
 
 #ifdef CONFIG_UAVCAN_V1_NODE_MANAGER
 	NodeManager _node_manager {_canard_instance, _param_manager};
+#endif
+
+#ifdef CONFIG_UAVCAN_V1_NODE_CLIENT
+	NodeClient *_node_client {nullptr};
 #endif
 
 	PublicationManager _pub_manager {_canard_instance, _param_manager};

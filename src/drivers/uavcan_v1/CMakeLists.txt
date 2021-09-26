@@ -50,6 +50,8 @@ else()
 endif()
 
 set(SRCS)
+set(DPNDS)
+
 if(${PX4_PLATFORM} MATCHES "nuttx")
 	if(CONFIG_NET_CAN)
 		list(APPEND SRCS
@@ -68,6 +70,16 @@ if(CONFIG_UAVCAN_V1_NODE_MANAGER)
     list(APPEND SRCS
 		NodeManager.hpp
 		NodeManager.cpp
+    )
+endif()
+
+if(CONFIG_UAVCAN_V1_NODE_CLIENT)
+    list(APPEND SRCS
+		NodeClient.hpp
+		NodeClient.cpp
+    )
+    list(APPEND DPNDS
+        drivers_bootloaders
     )
 endif()
 
@@ -102,4 +114,5 @@ px4_add_module(
 		git_public_regulated_data_types
 		git_legacy_data_types
 		version
+		${DPNDS}
 	)
