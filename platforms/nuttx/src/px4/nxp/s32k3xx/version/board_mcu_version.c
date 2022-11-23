@@ -49,28 +49,16 @@
 
 int board_mcu_version(char *rev, const char **revstr, const char **errata)
 {
-	uint32_t mcm_plrev = getreg32(S32K3XX_MCM_PLREV);
-	uint32_t mcm_lmemdesc0 = getreg32(S32K3XX_MCM_LMEMDESC0);
+	uint32_t midr1 = getreg32(S32K3XX_SIUL2_MIDR1);
 	static char chip[sizeof(CHIP_TAG)] = CHIP_TAG;
 
-	//chip[CHIP_TAG_LEN - 2] = '0' + ((sim_sdid & SIM_SDID_SUBSERIES_MASK) >> SIM_SDID_SUBSERIES_SHIFT);
-	//FIXME core count check and lockstep
-
-	if ((mcm_lmemdesc0 & MCM_LMEMDESC_LMSZ_MASK) == MCM_LMEMDESC_LMSZ_1024K) {
-		chip[CHIP_TAG_LEN - 1] = '1';
-
-	} else if ((mcm_lmemdesc0 & MCM_LMEMDESC_LMSZ_MASK) == MCM_LMEMDESC_LMSZ_2048K) {
-		chip[CHIP_TAG_LEN - 1] = '2';
-
-	} else if ((mcm_lmemdesc0 & MCM_LMEMDESC_LMSZ_MASK) == MCM_LMEMDESC_LMSZ_4096K) {
+	if ((midr1 & SIUL2_MIDR1_PART_NO_MASK) == SIUL2_MIDR1_PART_NO_S32K344) {
 		chip[CHIP_TAG_LEN - 1] = '4';
-
-	} else if ((mcm_lmemdesc0 & MCM_LMEMDESC_LMSZ_MASK) == MCM_LMEMDESC_LMSZ_8192K) {
-		chip[CHIP_TAG_LEN - 1] = '8';
+		chip[CHIP_TAG_LEN - 2] = '4';
 	}
 
 	*revstr = chip;
-	*rev = '0' + ((mcm_plrev & MCM_PLREV_MASK) >> MCM_PLREV_SHIFT);
+	*rev = '0' + ((midr1 & SIUL2_MIDR1_MAJOR_MASK) >> SIUL2_MIDR1_MAJOR_SHIFT);
 
 	if (errata) {
 		*errata = NULL;
