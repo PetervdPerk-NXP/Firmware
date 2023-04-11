@@ -274,6 +274,10 @@ const struct peripheral_clock_config_s g_peripheral_clockconfig0[] = {
 		.clkname = EMIOS0_CLK,
 		.clkgate = true,
 	},
+	{
+		.clkname = ADC2_CLK,
+		.clkgate = true,
+	}
 };
 
 unsigned int const num_of_peripheral_clocks_0 =
