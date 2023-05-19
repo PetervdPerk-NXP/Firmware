@@ -114,6 +114,7 @@ typedef uint32_t 	adc_chan_t;
 
 int px4_arch_adc_init(uint32_t base_address)
 {
+#if 0 
 	static bool once = false;
 
 	if (!once) {
@@ -172,12 +173,15 @@ int px4_arch_adc_init(uint32_t base_address)
 		UNUSED(r);
 		rCTRL(base_address) &= ~IMXRT_LPADC_CTRL_ADCEN;
 	} // once
-
+#endif
 	return 0;
+
+    
 }
 
 void px4_arch_adc_uninit(uint32_t base_address)
 {
+#if 0 
 	rCTRL(base_address) &= ~IMXRT_LPADC_CTRL_ADCEN;
 
 	if (base_address == IMXRT_LPADC1_BASE) {
@@ -186,10 +190,12 @@ void px4_arch_adc_uninit(uint32_t base_address)
 	} else if (base_address == IMXRT_LPADC2_BASE) {
 		imxrt_clockoff_adc2();
 	}
+#endif
 }
 
 uint32_t px4_arch_adc_sample(uint32_t base_address, unsigned channel)
 {
+#if 0 
 
 	irqstate_t flags = px4_enter_critical_section();
 
@@ -226,6 +232,8 @@ uint32_t px4_arch_adc_sample(uint32_t base_address, unsigned channel)
 	px4_leave_critical_section(flags);
 
 	return result;
+#endif
+    return 0;
 }
 
 float px4_arch_adc_reference_v()
