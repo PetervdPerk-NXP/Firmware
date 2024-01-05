@@ -74,9 +74,9 @@
 #define BOARD_TYPE                     35
 // The board has a 64 Mb part with 16384, 4K secors, but we artificialy limit it to 4 Mb
 // as 1024, 4K sectors
-#define BOARD_FLASH_SECTORS            1024 // Really (16384)
+#define BOARD_FLASH_SECTORS            16383 // Really (16384 - 1)
 #define BOARD_FIRST_FLASH_SECTOR_TO_ERASE 32 // We resreve 128K for the bootloader
-#define BOARD_FLASH_SIZE               (4 * 1024 * 1024)
+#define BOARD_FLASH_SIZE               (64 * 1024 * 1024)
 
 #define OSC_FREQ                       24
 
