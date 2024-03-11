@@ -215,7 +215,7 @@ class uploader(object):
     MAVLINK_REBOOT_ID1 = bytearray(b'\xfe\x21\x72\xff\x00\x4c\x00\x00\x40\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf6\x00\x01\x00\x00\x53\x6b')
     MAVLINK_REBOOT_ID0 = bytearray(b'\xfe\x21\x45\xff\x00\x4c\x00\x00\x40\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf6\x00\x00\x00\x00\xcc\x37')
 
-    MAX_FLASH_PRGRAM_TIME  = 0.001  # Time on an F7 to send SYNC, RESULT from last data in multi RXed
+    MAX_FLASH_PRGRAM_TIME  = 0.01  # Time on an F7 to send SYNC, RESULT from last data in multi RXed
 
     def __init__(self, portname, baudrate_bootloader, baudrate_flightstack):
         # Open the port, keep the default timeout short so we can poll quickly.
@@ -229,7 +229,7 @@ class uploader(object):
         self.window_max = 256
         self.window_per = 2  # Sync,<result>
         self.ackWindowedMode = False  # Assume Non Widowed mode for all USB CDC
-        self.port = serial.Serial(portname, baudrate_bootloader, timeout=0.5, write_timeout=0)
+        self.port = serial.Serial(portname, baudrate_bootloader, timeout=1.5, write_timeout=0)
         self.otp = b''
         self.sn = b''
         self.baudrate_bootloader = baudrate_bootloader
@@ -242,7 +242,7 @@ class uploader(object):
 
     def open(self):
         # upload timeout
-        timeout = _time() + 0.2
+        timeout = _time() + 0.4
 
         # attempt to open the port while it exists and until timeout occurs
         while self.port is not None:
@@ -550,7 +550,7 @@ class uploader(object):
         self.__drawProgressBar(label, 1, 100)
         expect_crc = fw.crc(self.fw_maxsize)
         self.__send(uploader.GET_CRC + uploader.EOC)
-        time.sleep(0.5)
+        time.sleep(1.5)
         report_crc = self.__recv_int()
         self.__getSync()
         if report_crc != expect_crc:
